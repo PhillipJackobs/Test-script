@@ -16,7 +16,7 @@ Note: When in doubt, press [b] to go back to the main menu.
 -bash-4.2$ " migration_process 
 	case "$migration_process" in
 		[z])
-php_modules exec on
+php_modules soap on
 ;;
 		[1]) #WGET/CPANEL
 echo "This is best suited for Cpanel migrations. To make it work you need only to create the backup and upload the expored SQL here.
