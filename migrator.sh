@@ -3,7 +3,7 @@
 # FUNCTIONS
 function mainmenu() { #Main menu/Migration wizard
 while true; do
-	read -p " 
+	echo " 
 Select migration process. 
 
 [1] Wget/Backup
@@ -11,12 +11,12 @@ Select migration process.
 [3] WPEngine
 [4] Exit
 
-Note: When in doubt, press [b] to go back to the main menu.
+Note: When in doubt, press [b] to go back to the main menu."
 
--bash-4.2$ " migration_process 
+read -e -p "~$: " migration_process 
 	case "$migration_process" in
 		[z])
-php_modules soap on
+notes
 ;;
 		[1]) #WGET/CPANEL
 echo "This is best suited for Cpanel migrations. To make it work you need only to create the backup and upload the expored SQL here.
@@ -33,6 +33,7 @@ Here are the steps in case if you don't know what I will be doing:
 			if check_for_files
 				extract_files
 				wp_config
+				edit_config
 				check_for_db
 				check_old_path
 				import_database
@@ -91,7 +92,8 @@ echo "Input your WPEngine backup link and then enter password and database name.
 done
 }
 
-function check_for_files(){ #Checks for any zip/tar/gz files, if there are no backups, it will redirect to the wget wizard
+#Checks for any zip/tar/gz files, if there are no backups, it will redirect to the wget wizard
+function check_for_files(){ 
 countfiles=`find . -type f  -name "*.zip" -o -name "*.tar.gz" -o -name "*.tar" -o -name "*.gz" | wc -l`
 echo "Checking for backups..."
 sleep 1
@@ -108,20 +110,21 @@ sleep 1
 		echo ""
 		ls #in case if there are 2 or more zip files, this will list them and the user chooses which zip to use for the migration.
 		echo ""
-		read -p "Select zip or press [d] to download your backup: " backupfile
+		echo "Select zip or press [d] to download your backup: " 
+		read -e -p "~$: " backupfile
 		if [[ "$backupfile" = "b" ]]; then
 			mainmenu
 		elif [[ "$backupfile" = "d" ]]; then
 			download_files 
 			check_for_files #we need this 
 		echo "Backup selected: $Selected_backup"
-	fi
+		fi
 	fi
 }
 function download_files() {
 while true; do
 	echo " "
-	read -p "[1]FTP or [2]Direct URL? " how_to_download
+	read -e -p "[1]FTP or [2]Direct URL? " how_to_download
 		if [[  "$DIRECT" = "2"  ]]; then
 			echo "To make this work, you need to:
 
@@ -135,7 +138,7 @@ Simply upload your backup here.
 Note: When in doubt, press [b] to go back or [s] to skip and proceed.
 "					
 			while true; do
-				read -p "Download link: " download_link
+				read -e -p "Download link: " download_link
 					if [[ -z "$download_link" ]]; then
 					 	continue
 					fi 
@@ -168,41 +171,44 @@ Cut dirs: 1
 Note: When in doubt, press [b] to go back or [s] to skip and proceed.
 "
 			while true; do
-				read -p "IP on the old host: " HOSTNAME
+				read -e -p "IP on the old host: " HOSTNAME
 					if [[ -z "$HOSTNAME" ]]; then
 					 	continue
 					fi 
 					if [[ "$HOSTNAME" = "b" ]]; then
 						mainmenu
 					fi
-				read -p "FTP Username: " USERNAME 
+				read -e -p "FTP Username: " USERNAME 
 					if [[ -z "$USERNAME" ]]; then
 					 	continue
 					fi
 					if [[ "$USERNAME" = "b" ]]; then
 						mainmenu
 					fi
-				read -p "FTP Password: "  PASSWORD
+				read -s -p "FTP Password: " PASSWORD
+				echo " "
+				echo
 					if [[ -z "$PASSWORD" ]]; then
 					 	continue
 					fi
 					if [[ "$PASSWORD" = "b" ]]; then
 						mainmenu
 					fi
-				read -p "Path to the backup: " PATHZIP
+				read -e -p "Path to the backup: " PATHZIP
 					if [[ -z "$PATHZIP" ]]; then
 					 	continue
 					fi
 					if [[ "$PATHZIP" = "b" ]]; then
 						mainmenu
 					fi
-				read -p "Cut dirs (default 1): " CUTDIRS 
+				read -e -p "Cut dirs (default 1): " CUTDIRS 
 					if [[ -z $CUTDIRS ]]; then
 						CUTDIRS=1
 					fi
 					if [[ "$CUTDIRS" = "b" ]]; then
 						mainmenu
 					fi
+					echo "wget -m -nH --cut-dirs=$CUTDIRS --ftp-user=$USERNAME --ftp-pass=$PASSWORD  ftp://"$HOSTNAME""$PATHZIP""
 					if wget -m -nH --cut-dirs=$CUTDIRS --ftp-user=$USERNAME --ftp-pass=$PASSWORD  ftp://"$HOSTNAME""$PATHZIP" ; then
 						echo "Download complete!"
 					else
@@ -221,7 +227,8 @@ Note: When in doubt, press [b] to go back or [s] to skip and proceed.
 done
 }
 
-function extract_files() { #unzip, checks if htaccess exists, permissions...
+#unzip, checks if htaccess exists, permissions...
+function extract_files() {
 echo "Extracting files..."
 sleep 3
 	if unzip -q $backupfile ; then
@@ -242,47 +249,57 @@ find . -type f -name ".listing*" -exec rm {} +
 find . -type f -name "php.ini*" -exec rm {} +
 find . -type f -name "*error_log*" -exec rm {} +
 }
-
-function wp_config() { #checks (up to 5 times) for any working wp-config password to connect to the mysql server, if not found then simply type/paste it.
+#checks (up to 5 times) for any working wp-config password to connect to the mysql server, if not found then simply type/paste it.
+function wp_config() { 
 config_pass1=`find ~/public_html/ ~/domains/*/public_html/ -name "wp-config.php" -exec grep -E 'DB_PASSWORD' {} \; 2>/dev/null | awk -F\' '{print $4}' | head -1`
 config_pass2=`find ~/public_html/ ~/domains/*/public_html/ -name "wp-config.php" -exec grep -E 'DB_PASSWORD' {} \; 2>/dev/null | awk -F\' '{print $4}' | head -2 | tail -1`
 config_pass3=`find ~/public_html/ ~/domains/*/public_html/ -name "wp-config.php" -exec grep -E 'DB_PASSWORD' {} \; 2>/dev/null | awk -F\' '{print $4}' | head -3 | tail -1`
 config_pass4=`find ~/public_html/ ~/domains/*/public_html/ -name "wp-config.php" -exec grep -E 'DB_PASSWORD' {} \; 2>/dev/null | awk -F\' '{print $4}' | head -4 | tail -1`
 config_pass5=`find ~/public_html/ ~/domains/*/public_html/ -name "wp-config.php" -exec grep -E 'DB_PASSWORD' {} \; 2>/dev/null | awk -F\' '{print $4}' | tail -1`
 	if mysql -u$USER -h localhost -p$config_pass1 -e 'show databases;' 2>/dev/null; then
-		read -p "Where do I import the database? " datadatabasesql
-		echo "Selected database: $datadatabasesql"
+		echo "Where do I import the database? "
+		read -e -p "~$: " databasesql
+		echo "Selected database: $databasesql"
 	elif mysql -u$USER -h localhost -p$config_pass2 -e 'show databases;' 2>/dev/null; then
 		config_pass1=$config_pass2
-		read -p "Where do I import the database? " datadatabasesql
-		echo "Selected database: $datadatabasesql"
+		echo "Where do I import the database? "
+		read -e -p "~$: " databasesql
+		echo "Selected database: $databasesql"
 	elif mysql -u$USER -h localhost -p$config_pass3 -e 'show databases;' 2>/dev/null; then
 		config_pass1=$config_pass3
-		read -p "Where do I import the database? " datadatabasesql
-		echo "Selected database: $datadatabasesql"
+		echo "Where do I import the database? "
+		read -e -p "~$: " databasesql
+		echo "Selected database: $databasesql"
 	elif mysql -u$USER -h localhost -p$config_pass4 -e 'show databases;' 2>/dev/null; then
 		config_pass1=$config_pass4
-		read -p "Where do I import the database? " datadatabasesql
-		echo "Selected database: $datadatabasesql"
+		echo "Where do I import the database? "
+		read -e -p "~$: " databasesql
+		echo "Selected database: $databasesql"
 	elif mysql -u$USER -h localhost -p$config_pass5 -e 'show databases;' 2>/dev/null; then
 		config_pass1=$config_pass5
-		read -p "Where do I import the database? " datadatabasesql
-		echo "Selected database: $datadatabasesql"
+		echo "Where do I import the database? "
+		read -e -p "~$: " databasesql
+		echo "Selected database: $databasesql"
 	else
 		read -s -p "Enter password: " config_passlegit
 		config_pass1=$config_passlegit
 		echo ""
 		mysql -u$USER -h localhost -p$config_pass1 -e 'show databases;'
-		read -p "Where do I import the database? " datadatabasesql
-		echo "Selected database: $datadatabasesql"
+		echo "Where do I import the database? "
+		read -e -p "~$: " databasesql
+		echo "Selected database: $databasesql"
 	fi
-sed -i "s+^.*DB_NAME.*$+define('DB_NAME', '$datadatabasesql');+" wp-config.php #edit wp-config file with the default $USER and a working config password, the DB_name is still checked manually, pls optimize.
-sed -i "s+^.*DB_USER.*$+define('DB_USER', '$USER');+" wp-config.php
-sed -i "s+^.*DB_PASSWORD.*$+define('DB_PASSWORD', '$config_pass1');+" wp-config.php
-sed -i "s+^.*DB_HOST.*$+define('DB_HOST', 'localhost');+" wp-config.php
+}
+function edit_config() {
+#edit wp-config file with the default $USER and a working config password, the DB_name is still checked manually, pls optimize.
+sed -i "s/^.*DB_NAME.*$/define('DB_NAME', '$databasesql');/" wp-config.php 
+sed -i "s/^.*DB_USER.*$/define('DB_USER', '$USER');/" wp-config.php
+sed -i "s/^.*DB_PASSWORD.*$/define('DB_PASSWORD', '$config_pass1');/" wp-config.php
+sed -i "s/^.*DB_HOST.*$/define('DB_HOST', 'localhost');/" wp-config.php
 }
 
-function no_htaccess() { #sometimes when there isn't a htaccess file, this will check and create one
+# Checks and creates a default .htaccess file if it's missing.
+function no_htaccess() {
 if [[ -f ".htaccess" ]]; then
 		echo " "
 else
@@ -294,9 +311,6 @@ RewriteRule ^index\.php$ - [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . /index.php [L]
-RewriteEngine on
-RewriteCond %{HTTPS} !=on [NC]
-RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 </IfModule>
 EOT
 fi
@@ -322,7 +336,7 @@ while true; do
 		echo "Select SQL database:"
 		find . -maxdepth 1 -type f  -name "*.sql" | cut -c 3-
 		echo ""
-		read -p "Database: " databasesql
+		read -e -p "Database: " databasesql
 		echo "Selected database SQL: $databasesql"
 		break
 	fi
@@ -376,10 +390,22 @@ RewriteRule .* - [E=noabort:1]
 </IfModule>" | cat - .htaccess >temp && mv temp .htaccess
 		echo "Success: Wordfence rule whitelisted."
 	fi
+	if [[ -d "./wp-content/plugins/alidswoo" ]]; then 
+			echo "AliDropShip Woocommerce plugin detected!"
+			php_modules ioncube on
+	fi
+	if [[ -d "./wp-content/plugins/aawp" ]]; then 
+			echo "AAWP plugin detected!"
+			php_modules soap on
+	fi
+	if [[ -d "./wp-content/plugins/updraftplus" ]]; then 
+			echo "UpdraftPlus detected!"
+			php_modules exec on
+	fi
 	if [[ -d "./wp-content/plugins/ewww-image-optimizer" ]]; then 
 			echo "EWWW Imae Optimizer detected!"
 			php_modules exec on
-		fi
+	fi
 	if grep -q /var/lib/sec/wp-settings.php wp-config.php wp-config.php; then
 		sed -i "s+^.*/var/lib/sec/wp-settings.php.*$+#@include_once('/var/lib/sec/wp-settings.php'); // Added by SiteGround WordPress management system+" wp-config.php
 	fi
@@ -424,7 +450,7 @@ sed -i "/.*define('FS_CHMOD_FILE', (0664 & ~ umask()));.*/d" wp-config.php
 
 function w3tcc(){ #in case if the clients wants or doesn't want w3tc/autoptimize when migrating to WPX
 while true; do #purposefully made in loop since we want an accurate answer, y or n.
-	read -p "W3 Total Cache and Autoptimize? [y/n]: " CACHING
+	read -e -p "W3 Total Cache and Autoptimize? [y/n]: " CACHING
 		if [[ -z $CACHING ]]; then
 			echo "OK"
 		elif [[  "$CACHING" = "y"  ]]; then
@@ -437,12 +463,21 @@ while true; do #purposefully made in loop since we want an accurate answer, y or
 			echo "Error!"
 			continue
 		fi
+	echo "Installing W3-Total-Cache..."
 	break
 done
 	if [[  "$CACHING" = "y"  ]]; then
 		if wpx plugin is-active wp-rocket ; then
 			echo "Deactivating wp-rocket..."
 			wpx plugin deactivate wp-rocket >/dev/null 2>&1
+		fi
+		if wpx plugin is-active wp-optimize ; then
+			echo "Deactivating wp-optimize..."
+			wpx plugin deactivate wp-optimize >/dev/null 2>&1
+		fi
+		if wpx plugin is-active cache-enabler ; then
+			echo "Deactivating cache-enabler..."
+			wpx plugin deactivate cache-enabler >/dev/null 2>&1
 		fi
 		if wpx plugin is-active litespeed-cache ; then
 			echo "Deactivating litespeed-cache..."
@@ -451,6 +486,14 @@ done
 		if wpx plugin is-active nitropack ; then
 			echo "Deactivating nitropack..."
 			wpx plugin deactivate nitropack >/dev/null 2>&1
+		fi
+		if wpx plugin is-active breeze ; then
+			echo "Deactivating breeze..."
+			wpx plugin deactivate breeze >/dev/null 2>&1
+		fi
+		if wpx plugin is-active hummingbird-performance ; then
+			echo "Deactivating hummingbird-performance..."
+			wpx plugin deactivate hummingbird-performance >/dev/null 2>&1
 		fi
 		if wpx plugin is-active wp-super-cache ; then
 			echo "Deactivating wp-super-cache..."
@@ -504,14 +547,16 @@ done
 		fi
 }
 
-function scanit() { #checksum & scan
+#checksum & scan
+function scanit() { 
 wpx checksum core
 echo "Scanning for infected files..."
 ionice -c3 nice clamscan -ri --database=/var/lib/clamav/custom/ -l scan_results.txt
 rm scan_results.txt
 }
 
-function notes() { #prints the macro for the migration ticket +NS/A records +notes
+#prints the macro for the migration ticket +NS/A records +notes
+function notes() { 
 	value=`dig $(hostname) +short` #checks the server IP
 		if	[[ "$value" = "67.202.92.24" ]]; then
 			NS1=ns62.wpx.net
@@ -586,10 +631,15 @@ function notes() { #prints the macro for the migration ticket +NS/A records +not
 			NS1=ns48.wpxhosting.com
 			NS2=ns49.wpxhosting.com
 		fi
-		
-	if curl --silent `wpx option get siteurl` >/dev/null 2>&1 ; then #checks the site for SSL
-		wehave=sslon
+	#checks the site for SSL	
+	if curl --silent `wpx option get siteurl` ; then 
+		SSL_IS=MIGRATED
+		echo "Migration reply:"
 	else
+		SSL_IS=NOT_MIGRATED
+	fi
+
+	if [[ "$SSL_IS" = "NOT_MIGRATED" ]]; then
 		echo "We have noticed that your site is using an SSL certificate. If you want us to move your current certificate please provide us with the certificate itself, its private key and its CA bundle.
 
 If you are not familiar with those or your current certificate can't be moved from your old host, please get back to us once the propagation is completed and we will install one of our free SSL certificates."
@@ -633,7 +683,7 @@ More information can be found here: https://kb.wpx.net/why-wpx-hosting-recommend
 	if [[ -d "./wp-content/plugins/ewww-image-optimizer" ]]; then 
 		echo "EWWW IO - phpexec on"
 	fi
-	if [[  "$wehave" = "sslon"  ]]; then
+	if [[  "$SSL_IS" = "MIGRATED"  ]]; then
 		echo "SSL migrated"
 	else
 		echo "SSL macro"
@@ -658,7 +708,7 @@ count=`ls -1 *.wpress 2>/dev/null | wc -l`
 		echo "Note: To make this work, you may need to disable the DNS zone in Virtual min or download the backup from another URL different than your domain."
 		echo " "
 		while true; do
-			read -p "Backup URL: " backup_url
+			read -e -p "Backup URL: " backup_url
 				if [[ "$backup_url" = "b" ]]; then
 					mainmenu
 				elif [[ -z "$backup_url" ]]; then
@@ -675,7 +725,7 @@ count=`ls -1 *.wpress 2>/dev/null | wc -l`
 		done
 	fi
 	while true; do
-		read -p "Is the website loading with www? [y/n]: " WWWW
+		read -e -p "Is the website loading with www? [y/n]: " WWWW
 			if [[  "$WWWW" = "y"  ]]; then
 				wpx search-replace "http://" "http://www." --all-tables --quiet
 				wpx search-replace "http:" "https:" --all-tables --quiet
@@ -693,7 +743,7 @@ count=`ls -1 *.wpress 2>/dev/null | wc -l`
 		break
 	done
 	while true; do
-		read -p "Delete All in one after migration? [y/n]: " delete_aio
+		read -e -p "Delete All in one after migration? [y/n]: " delete_aio
 			if [[ "$delete_aio" = "n" ]]; then
 				echo "OK"
 			elif [[ "$delete_aio" = "y" ]]; then
@@ -707,7 +757,7 @@ count=`ls -1 *.wpress 2>/dev/null | wc -l`
 		break
 	done
 	if wpx plugin install http://omg.doyouevencode-bro.cloud/all-in-one-wp-migration.zip --activate >/dev/null 2>&1; then
-		echo "Done"
+		echo " "
 	else
 		wpx plugin delete all-in-one-wp-migration --quiet >/dev/null 2>&1
 		wpx plugin delete all-in-one-wp-migration-unlimited-extension --quiet >/dev/null 2>&1
@@ -749,20 +799,21 @@ tmp=$(mktemp)
 		wpx plugin update all-in-one-wp-migration --quiet >/dev/null 2>&1
 	fi
 }
-
-function freshwp(){ #Install fresh Wordpress with the following domain/DBname/DBpass details.
+#Install fresh Wordpress with the following domain/DBname/DBpass details.
+function freshwp() { 
 while true; do
-read -p "[c]ustom or [r]andom admin username & password? " creds
+echo "[c]ustom or [r]andom admin username & password? " 
+read -e -p "~$: " creds
 	if [[ "$creds" = "c" ]]; then
-			read -p "Username: " username
+			read -e -p "Username: " username
 				if [[ "$username" = "b" ]]; then
 					mainmenu
 				fi
-			read -p "Password: " parola
+			read -e -p "Password: " parola
 				if [[ "$parola" = "b" ]]; then
 					continue
 				fi
-			read -p "Email address: " mail
+			read -e -p "Email address: " mail
 				if [[ "$mail" = "b" ]]; then
 					continue
 				fi
@@ -779,10 +830,8 @@ read -p "[c]ustom or [r]andom admin username & password? " creds
 		fi
 	break
 done
-read -p "URL: " website_url
-read -s -p "Enter password: " somepassword
-mysql -u$USER -h localhost -p$somepassword -e 'show databases;'
-read -p "Select database: " datadatabasesql
+read -e -p "URL: " website_url
+wp_config
 echo " "
 cat <<EOT>> .htaccess
 <IfModule mod_rewrite.c>
@@ -792,13 +841,11 @@ RewriteRule ^index\.php$ - [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . /index.php [L]
-RewriteCond %{HTTPS} !=on [NC]
-RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 </IfModule>
 EOT
 wpx core download --force --quiet
 echo "Success: WordPress downloaded."
-wpx config create --dbname=$datadatabasesql --dbuser=$USER --dbpass=$somepassword --dbprefix=wp_ --quiet
+wpx config create --dbname=$databasesql --dbuser=$USER --dbpass=$config_pass1 --dbprefix=wp_ --quiet
 echo "Success: Generated 'wp-config.php' file."
 wpx core install --url=$website_url --title=Home --admin_user=$username --admin_password=$parola --admin_email=$mail --quiet
 echo "Success: WordPress installed successfully."
@@ -809,19 +856,18 @@ wpx cache flush --quiet
 pkill -u$USER php
 echo " "
 echo "Admin details: "
-echo "Login: $URL/wp-login.php"
+echo "Login: $website_url/wp-login.php"
 echo "Username: $username"
 echo "Password: $parola"
 echo "Email: $mail"
 echo " "
-echo "Done"
 }
 
 function wpe() {
-read -p "Backup URL: " WPEURL
-read -p "Enter password: " wpedbparola
+read -e -p "Backup URL: " WPEURL
+read -e -p "Enter password: " wpedbparola
 mysql -u$USER -h localhost -p$wpedbparola -e 'show databases;'
-read -p "Select database: " wpedbname
+read -e -p "Select database: " wpedbname
 wget $WPEURL
 check_for_files
 unzip -q $backupfile
@@ -849,10 +895,7 @@ rm ./migrator.sh
 exit
 }
 
-sleep 1
 echo ""
 echo "Hi!"
-sleep 2
-echo "This is the WPX migrator! It's designed to make things easy for you and doesn't require much to do from you."
 sleep 1
 mainmenu
